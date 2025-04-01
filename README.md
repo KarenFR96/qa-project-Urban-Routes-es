@@ -66,7 +66,7 @@ Los resultados de las pruebas se mostrarán directamente en la consola. Asegúra
 # Configuración Adicional
 
 ## Variables de Entorno
-Las URLs y otros datos de prueba, como direcciones y números de teléfono, están configurados en el archivo `data.py`. Puedes modificar estos valores según sea necesario para personalizar las pruebas.
+Las URLs y otros datos de prueba, como direcciones están configurados en el archivo `data.py`. Puedes modificar estos valores según sea necesario para personalizar las pruebas.
 
 ## Logs
 Las pruebas están configuradas para capturar logs del navegador. Esto puede ser útil para la depuración en caso de que alguna prueba falle.
