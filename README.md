@@ -75,11 +75,11 @@ Las pruebas están configuradas para capturar logs del navegador. Esto puede ser
 
 # Estructura del Proyecto
 El proyecto está organizado de la siguiente manera:
-qa-project-Urban-Routes-es/
-├── data.py                # Datos de prueba (URLs, direcciones, números de teléfono, etc.)
-├── main.py                # Clases de automatización y pruebas
-├── .gitignore             # Archivos y directorios a excluir del control de versiones
-├── README.md              # Este archivo de documentación
-├── pytest.ini             # Configuración de pytest (opcional)
-└── config/                # Archivos de configuración para el entorno de desarrollo (opcional)
+- `data.py`: Contiene datos de prueba esenciales, como URLs y direcciones, para realizar las pruebas automatizadas.
+- `main.py`: Incluye las clases y funciones necesarias para ejecutar las pruebas automatizadas.
+- `.gitignore`: Define qué archivos y directorios deben excluirse del control de versiones.
+- `README.md`: Este archivo de documentación que estás leyendo.
+- `pytest.ini`: Configuración opcional para la ejecución de pruebas con Pytest.
+- `config/`: Carpeta donde se almacenan archivos de configuración específicos para el entorno de desarrollo.
+
 
