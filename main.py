@@ -1,3 +1,4 @@
+from selenium.common import TimeoutException
 from selenium.webdriver.support.expected_conditions import element_located_selection_state_to_be
 
 import data
@@ -7,6 +8,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+from data import card_number
 
 
 # no modificar
@@ -56,6 +59,9 @@ class UrbanRoutesPage:
     switch_button_1 = (By.XPATH, '//div[@class="switch"]/span[@class="slider round"]')
     switch_button_2 = (By.XPATH, '//div[@class="r-sw"]/div[@class="switch"]/span[@class="slider round"]')
     counter_ice_cream = (By.XPATH, '//div[contains(@class,"r-counter-label") and text()="Helado"]/following-sibling::div//div[@class="counter-plus"]')
+    taxi_modal = (By.CSS_SELECTOR, 'div.order-body')
+    reservation_button = (By.CSS_SELECTOR, 'button.smart-button')
+
 
     def __init__(self, driver):
         self.driver = driver
@@ -126,6 +132,10 @@ class UrbanRoutesPage:
     def set_phone_number(self, phone_number_settled):
         self.driver.find_element(*self.phone_number).send_keys(phone_number_settled)
 
+    def get_phone_number(self):
+        get_phone_number = self.driver.find_element(self.modal_phone_number)
+        return get_phone_number.text
+
     #Buscar el boton "Siguiente" y darle click
     def click_on_next_button(self):
         self.driver.find_element(*self.next_button_modal_phone_number).click()
@@ -192,6 +202,10 @@ class UrbanRoutesPage:
         except Exception as e:
             print(f"Error: {e}")
 
+    def get_card_number_added(self):
+        get_card_number = self.driver.find_element(self.card_number)
+        return get_card_number.get_attribute('value')
+
     # Rellenar el CVV
     def set_cvv_number(self, cvv_number):
         cvv_element = self.driver.find_element(*self.cvv).send_keys(cvv_number)
@@ -200,6 +214,10 @@ class UrbanRoutesPage:
         # Esperar a que el botón "Agregar" sea clickeable
         wait = WebDriverWait(self.driver, 10)
         wait.until(EC.element_to_be_clickable(self.button_cvv_add))
+
+    def get_cvv_number_card(self):
+        cvv_element = self.driver.find_element(self.cvv)
+        return cvv_element.get_attribute('value')
 
     #Escribir mensaje al conductor
     def set_sms_to_driver(self, sms):
@@ -212,19 +230,18 @@ class UrbanRoutesPage:
         #Escribir el mensaje
         sms_element.send_keys(sms)
 
+    def get_sms_driver(self):
+        sms_driver = self.driver.find_element(self.sms_driver)
+        return sms_driver.get_attribute('value')
+
     # Pedir otras opciones
     def ask_for_more_options(self):
         wait = WebDriverWait(self.driver, 10)
         # Pedir una manta y pañuelos
         blanket_and_tissues_switch = wait.until(EC.element_to_be_clickable(self.switch_button_1))
         blanket_and_tissues_switch.click()
-        # Verificar si el switch está activado
-        is_blanket_and_tissues_selected = blanket_and_tissues_switch.is_selected()
-        # Pedir cortina acustica
-        acoustic_curtain_switch = wait.until(EC.element_to_be_clickable(self.switch_button_2))
-        acoustic_curtain_switch.click()
-        # Verificar si el switch está activado
-        is_acoustic_curtain_selected = acoustic_curtain_switch.is_selected()
+        # Verificar si el switch está activado y devolver el resultado
+        return blanket_and_tissues_switch.is_selected()
 
     #Pedir 2 helados
     def ask_for_ice_cream(self, quantity):
@@ -236,6 +253,33 @@ class UrbanRoutesPage:
         while current_value < quantity:
             ice_cream_container.click()
             current_value += 1
+
+        return current_value
+
+    def get_ice_cream_quantity(self):
+        # Localizar el contenedor del helado y obtener el valor actual
+        ice_cream_container = self.driver.find_element(self.counter_ice_cream)
+        return int(ice_cream_container.text)  # Suponiendo que el valor es texto
+
+    #Dar click en el boton de reserva
+    def make_a_reservation(self):
+        wait = WebDriverWait(self.driver, 10)
+        # Esperar a que el elemento esté en el DOM, sea visible para dar click sobre el
+        reservation_button = wait.until(EC.element_to_be_clickable(self.reservation_button))
+        reservation_button.click()
+
+    # Aparece el modal para buscar un taxi
+    def modal_looking_for_a_taxi(self):
+        wait = WebDriverWait(self.driver, 10)
+        try:
+            # Esperar a que el elemento esté en el DOM y sea visible
+            taxi_modal_element = wait.until(EC.visibility_of_element_located(self.taxi_modal))
+            # Retornar True si el modal es encontrado
+            return taxi_modal_element.is_displayed()
+        except TimeoutException:
+            # Si el modal no aparece en el tiempo de espera, retornar False
+            return False
+
 
 class TestUrbanRoutes:
 
@@ -262,6 +306,150 @@ class TestUrbanRoutes:
         assert routes_page.get_from() == address_from
         assert routes_page.get_to() == address_to
 
+    def test_select_comfort_fare(self):
+        #Primero, configuramos la ruta
+        self.test_set_route()
+
+        routes_page = UrbanRoutesPage(self.driver)
+
+        #Llamar a los metodos
+        routes_page.wait_for_load_taxi_container()
+        routes_page.wait_for_load_button_ask_taxi()
+        routes_page.wait_for_comfort_option()
+
+        #Validar que la opción Comfort fue seleccionada correctamente
+        selected_option = self.driver.find_element(*routes_page.comfort_option)
+        assert selected_option.text == "Comfort"
+
+    def test_fill_phone_number(self):
+        #Primero, configuramos la ruta
+        self.test_set_route()
+
+        #Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        routes_page = UrbanRoutesPage(self.driver)
+        phone_number = data.phone_number
+
+        #Llamar a los metodos
+        routes_page.wait_for_phone_number_option()
+        routes_page.wait_for_phone_number_modal()
+        routes_page.set_phone_number(phone_number)
+        routes_page.click_on_next_button()
+
+        #Validar que la el campo "Número de telefono" fue rellenado correctamente
+        assert routes_page.get_phone_number() == str(phone_number)
+
+    def test_add_credit_card_number(self):
+        # Primero, configuramos la ruta
+        self.test_set_route()
+
+        # Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        routes_page = UrbanRoutesPage(self.driver)
+        card_number = data.card_number
+
+        #Llamar los metodos
+        routes_page.wait_for_payment_method()
+        routes_page.wait_for_add_card()
+        routes_page.wait_for_add_card_number(card_number)
+
+        # Validar que la el campo "Número de Tarjeta" fue rellenado correctamente
+        assert  routes_page.get_card_number_added() == str(card_number)
+
+    def test_cvv_card(self):
+        # Primero, configuramos la ruta
+        self.test_set_route()
+
+        # Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        #Tercero, se adiciona tarjeta
+        self.test_add_credit_card()
+
+        routes_page = UrbanRoutesPage(self.driver)
+        cvv_number = data.card_code
+
+        #Llamar a los metodos
+        routes_page.set_cvv_number(cvv_number)
+
+        # Validar que la el campo "CVV" fue rellenado correctamente
+        assert routes_page.get_cvv_number_card() == str(cvv_number)
+
+    def test_write_sms_driver(self):
+        # Primero, configuramos la ruta
+        self.test_set_route()
+
+        # Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        routes_page = UrbanRoutesPage(self.driver)
+        sms_to_driver = data.message_for_driver
+
+        #Llamar a los metodos
+        routes_page.set_sms_to_driver(sms_to_driver)
+
+        # Validar que la el campo "Mensaje para el conductor" fue rellenado correctamente
+        assert routes_page.get_sms_driver()== sms_to_driver
+
+
+    def test_ask_for_more_options(self):
+        # Primero, configuramos la ruta
+        self.test_set_route()
+
+        # Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        routes_page = UrbanRoutesPage(self.driver)
+
+        #Llamar a los metodos
+        is_activated = routes_page.ask_for_more_options()
+
+        # Validar que se adicionaron las opciones de manta y pañuelos correctamente
+        assert is_activated == True
+
+    def test_ask_ice_cream(self):
+        # Primero, configuramos la ruta
+        self.test_set_route()
+
+        # Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        routes_page = UrbanRoutesPage(self.driver)
+        ice_cream_quantity = 2
+
+        #Llamas a los metodos
+        routes_page.ask_for_ice_cream(ice_cream_quantity)
+
+        # Validar que se adiciono la cantidad de helados correctamente
+        assert routes_page.get_ice_cream_quantity() == ice_cream_quantity
+
+    def test_taxi_modal(self):
+        # Primero, configuramos la ruta
+        self.test_set_route()
+
+        # Segundo, se selecciona la tarifa
+        self.test_select_comfort_fare()
+
+        #Tercero, se rellena el numero de telefono
+        self.test_fill_phone_number()
+
+        #Cuarto, se adiciona la tarjeta y el CVV
+        self.test_add_credit_card_number()
+        self.test_cvv_card()
+
+        #Quinto se adicionan las opciones extra
+        self.test_ask_for_more_options()
+        self.test_ask_ice_cream()
+        routes_page = UrbanRoutesPage(self.driver)
+
+        #Llamar metodos
+        routes_page.make_a_reservation()
+        taxi_modal = routes_page.modal_looking_for_a_taxi()
+
+        #Verificar que el modal aparezca en pantalla
+        assert taxi_modal, "Error: El modal de búsqueda de taxi no apareció."
 
     @classmethod
     def teardown_class(cls):
